@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         MetaTFT Vertical Comps
 // @namespace    https://metatft.com
-// @version      3.0
-// @description  reformats metatft comp list into vertical cards to maximize comps visible on wide screens
+// @version      3.2
+// @description  reformats metatft comp list into ultra-compact vertical cards to maximize comps visible on wide screens
 // @author       jasonshipp
 // @match        https://www.metatft.com/*
 // @match        https://metatft.com/*
@@ -13,10 +13,10 @@
 (function () {
   'use strict';
 
-  console.log('[VC] metatft vertical comps v3 loaded');
+  console.log('[VC] metatft vertical comps v3.2 loaded');
 
   // ---- config ----
-  const CARD_MIN_WIDTH = 220;
+  const CARD_MIN_WIDTH = 80;
   const TOGGLE_KEY = 'v'; // alt+v
 
   let active = false;
@@ -29,11 +29,11 @@
     #vc-card-grid {
       display: none;
       grid-template-columns: repeat(auto-fill, minmax(${CARD_MIN_WIDTH}px, 1fr));
-      gap: 8px;
-      padding: 8px;
+      grid-auto-rows: 1fr;
+      gap: 4px;
+      padding: 4px;
       width: 100%;
       overflow-y: auto;
-      align-items: start;
     }
     #vc-card-grid.vc-active {
       display: grid;
@@ -41,74 +41,181 @@
 
     /* ===== individual card ===== */
     .vc-card {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
       border: 1px solid #3a3b3e;
-      border-radius: 6px;
-      padding: 10px 8px;
-      gap: 6px;
+      border-radius: 4px;
+      padding: 9px 5px;
+      gap: 2px;
       background: #222326;
     }
     .vc-card:nth-child(even) {
       background: #27282b;
     }
 
-    /* header: tier badge + comp name */
+    /* header: tier badge only (name is hidden behind popout) */
     .vc-card-header {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 4px;
       width: 100%;
     }
     .vc-card-header .CompRowTierBadge {
       flex-shrink: 0;
     }
-    .vc-card-name {
-      text-align: center;
-      font-size: 13px;
-      font-weight: 600;
-      line-height: 1.3;
-      white-space: normal;
-      word-break: break-word;
+
+    /* comp name popout trigger */
+    .vc-name-trigger {
+      cursor: pointer;
+      font-size: 9px;
+      color: #888;
+      background: #333;
+      border-radius: 3px;
+      padding: 1px 4px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 50px;
+      user-select: none;
+    }
+    .vc-name-trigger:hover {
+      color: #ccc;
+      background: #444;
     }
 
-    /* tags row */
+    /* popout (shared for name and traits) */
+    .vc-popout {
+      display: none;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111;
+      border: 2px solid #ff7e83;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      z-index: 200;
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,.8);
+    }
+    .vc-popout.vc-popout-above {
+      bottom: 100%;
+      margin-bottom: 4px;
+    }
+    .vc-popout.vc-popout-below {
+      top: 100%;
+      margin-top: 4px;
+    }
+    .vc-popout.vc-popout-visible {
+      display: block;
+    }
+
+    /* traits inside popout */
+    .vc-popout .vc-popout-traits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      justify-content: center;
+    }
+
+    /* tags: icon-only for those with images, hidden otherwise */
     .vc-card-tags {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 4px;
+      gap: 2px;
       width: 100%;
     }
-
-    /* traits row */
-    .vc-card-traits {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1px;
-      width: 100%;
+    .vc-tag-icon {
+      width: 14px;
+      height: 14px;
+      display: block;
     }
 
-    /* units row */
+    /* traits trigger (small icon to open traits popout) */
+    .vc-traits-trigger {
+      cursor: pointer;
+      font-size: 9px;
+      color: #888;
+      background: #333;
+      border-radius: 3px;
+      padding: 1px 4px;
+      line-height: 1.2;
+      user-select: none;
+    }
+    .vc-traits-trigger:hover {
+      color: #ccc;
+      background: #444;
+    }
+
+    /* units: single vertical column */
     .vc-card-units {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 3px;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
       width: 100%;
     }
+    /* each unit: champion portrait with items stacked to its right */
+    .vc-card-units .Unit_Wrapper {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: flex-start;
+      gap: 1px;
+      transform: scale(0.7);
+      transform-origin: center top;
+      margin-bottom: -14px;
+    }
+    .vc-card-units .Unit_Wrapper > a {
+      flex-shrink: 0;
+    }
+    .vc-card-units .ItemsContainer_Inline {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 1px;
+      align-items: center;
+    }
+    .vc-card-units .Item_img {
+      width: 14px !important;
+      height: 14px !important;
+    }
+    .vc-card-units .UnitNames {
+      display: none !important;
+    }
 
-    /* stats row */
+    /* stats: compact top-right overlay */
     .vc-card-stats {
+      position: absolute;
+      top: 2px;
+      right: 2px;
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 4px 10px;
-      width: 100%;
-      font-size: 12px;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0;
+      font-size: 9px;
+      line-height: 1.2;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .vc-stat {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .vc-stat-label {
+      color: #777;
+      font-size: 7px;
+      text-transform: uppercase;
+    }
+    .vc-stat-value {
+      font-weight: 600;
     }
 
     /* ===== toggle button ===== */
@@ -173,6 +280,15 @@
     .vc-original-hidden {
       display: none !important;
     }
+
+    /* collapse page header and ad banner when vertical mode is active */
+    body.vc-mode-active .PageHeader {
+      display: none !important;
+    }
+    body.vc-mode-active .NavBarContainerMain .NavBarBrand {
+      max-height: 28px;
+      overflow: hidden;
+    }
   `;
 
   // ---- inject styles ----
@@ -193,7 +309,7 @@
     const card = document.createElement('div');
     card.className = 'vc-card';
 
-    // header: tier badge + name
+    // header: tier badge + clickable name trigger
     const header = document.createElement('div');
     header.className = 'vc-card-header';
 
@@ -202,32 +318,75 @@
 
     const nameEl = row.querySelector('.Comp_Title');
     if (nameEl) {
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'vc-card-name';
-      nameSpan.textContent = nameEl.textContent.trim();
-      header.appendChild(nameSpan);
+      const nameText = nameEl.textContent.trim();
+      // small trigger that shows popout on click
+      const trigger = document.createElement('span');
+      trigger.className = 'vc-name-trigger';
+      trigger.textContent = '\u2139';
+      trigger.title = nameText;
+
+      const popout = document.createElement('div');
+      popout.className = 'vc-popout';
+      popout.textContent = nameText;
+
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllPopouts(popout);
+        positionPopout(card, popout);
+        popout.classList.toggle('vc-popout-visible');
+      });
+
+      header.appendChild(trigger);
+      card.appendChild(popout);
     }
     if (header.childNodes.length) card.appendChild(header);
 
-    // tags (e.g. "Fast 8", "Medium")
+    // tags: only show icon if the tag has an image, skip text-only tags
     const tags = row.querySelectorAll('.CompRowTag');
-    if (tags.length) {
+    const iconTags = [];
+    tags.forEach(t => {
+      const img = t.querySelector('img');
+      if (img) {
+        const icon = img.cloneNode(true);
+        icon.className = 'vc-tag-icon';
+        icon.title = t.textContent.trim();
+        iconTags.push(icon);
+      }
+    });
+    if (iconTags.length) {
       const wrap = document.createElement('div');
       wrap.className = 'vc-card-tags';
-      tags.forEach(t => wrap.appendChild(t.cloneNode(true)));
+      iconTags.forEach(i => wrap.appendChild(i));
       card.appendChild(wrap);
     }
 
-    // traits
+    // traits: popout trigger instead of always-visible row
     const traits = row.querySelectorAll('.TraitCompactContainer');
     if (traits.length) {
-      const wrap = document.createElement('div');
-      wrap.className = 'vc-card-traits';
-      traits.forEach(t => wrap.appendChild(t.cloneNode(true)));
-      card.appendChild(wrap);
+      const traitsTrigger = document.createElement('span');
+      traitsTrigger.className = 'vc-traits-trigger';
+      traitsTrigger.textContent = '\u2726' + traits.length;
+      traitsTrigger.title = 'Show traits';
+
+      const traitsPopout = document.createElement('div');
+      traitsPopout.className = 'vc-popout';
+      const traitsWrap = document.createElement('div');
+      traitsWrap.className = 'vc-popout-traits';
+      traits.forEach(t => traitsWrap.appendChild(t.cloneNode(true)));
+      traitsPopout.appendChild(traitsWrap);
+
+      traitsTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllPopouts(traitsPopout);
+        positionPopout(card, traitsPopout);
+        traitsPopout.classList.toggle('vc-popout-visible');
+      });
+
+      card.appendChild(traitsTrigger);
+      card.appendChild(traitsPopout);
     }
 
-    // units
+    // units: single vertical column
     const units = row.querySelectorAll('.Unit_Wrapper');
     if (units.length) {
       const wrap = document.createElement('div');
@@ -236,14 +395,44 @@
       card.appendChild(wrap);
     }
 
-    // stats
+    // stats: compact top-right overlay (avg place + win rate only)
     const statsContainer = row.querySelector('.Comp_Stats');
     if (statsContainer) {
       const wrap = document.createElement('div');
       wrap.className = 'vc-card-stats';
-      const statRows = statsContainer.querySelectorAll(':scope > .Comp_Stats_Row');
-      statRows.forEach(s => wrap.appendChild(s.cloneNode(true)));
-      card.appendChild(wrap);
+
+      const statRows = statsContainer.querySelectorAll(':scope .Comp_Stats_Row .Stat_Number');
+      statRows.forEach(numEl => {
+        const parentRow = numEl.closest('.Comp_Stats_Row');
+        const labelEl = parentRow?.querySelector('.Stat_Text');
+        if (!labelEl) return;
+
+        const labelText = labelEl.textContent.trim();
+        // only show avg place and win rate for compactness
+        let shortLabel = '';
+        if (labelText === 'Avg Place') shortLabel = 'AP';
+        else if (labelText === 'Win Rate') shortLabel = 'W';
+        else if (labelText === 'Pick Rate') shortLabel = 'P';
+        else return;
+
+        const stat = document.createElement('div');
+        stat.className = 'vc-stat';
+
+        const lbl = document.createElement('span');
+        lbl.className = 'vc-stat-label';
+        lbl.textContent = shortLabel;
+
+        const val = document.createElement('span');
+        val.className = 'vc-stat-value';
+        val.textContent = numEl.textContent.trim();
+        val.style.color = numEl.style.color || '#ccc';
+
+        stat.appendChild(lbl);
+        stat.appendChild(val);
+        wrap.appendChild(stat);
+      });
+
+      if (wrap.children.length) card.appendChild(wrap);
     }
 
     // fallback: if nothing matched, clone the whole row
@@ -253,6 +442,32 @@
 
     return card;
   }
+
+  // ---- popout helpers ----
+  function closeAllPopouts(except) {
+    document.querySelectorAll('.vc-popout.vc-popout-visible').forEach(p => {
+      if (p !== except) p.classList.remove('vc-popout-visible', 'vc-popout-above', 'vc-popout-below');
+    });
+  }
+
+  // position popout above or below the card depending on viewport space
+  // dynamically measures the site's sticky header so it never hides behind it
+  function positionPopout(card, popout) {
+    popout.classList.remove('vc-popout-above', 'vc-popout-below');
+    const rect = card.getBoundingClientRect();
+    // find the bottom edge of the sticky nav bar
+    const nav = document.querySelector('.NavBarContainerMain');
+    const navBottom = nav ? nav.getBoundingClientRect().bottom : 0;
+    // add some breathing room for the popout height
+    const threshold = navBottom + 60;
+    if (rect.top < threshold) {
+      popout.classList.add('vc-popout-below');
+    } else {
+      popout.classList.add('vc-popout-above');
+    }
+  }
+
+  document.addEventListener('click', () => closeAllPopouts());
 
   // ---- build all cards from current rows ----
   function buildCards() {
@@ -324,9 +539,10 @@
       // build cards from all loaded rows
       buildCards();
 
-      // hide original, show grid
+      // hide original, show grid, collapse header
       if (compList) compList.classList.add('vc-original-hidden');
       cardGrid.classList.add('vc-active');
+      document.body.classList.add('vc-mode-active');
 
       // observe for data refreshes (filter changes, etc.)
       startObserver();
@@ -344,6 +560,7 @@
       // restore original
       if (compList) compList.classList.remove('vc-original-hidden');
       if (cardGrid) cardGrid.classList.remove('vc-active');
+      document.body.classList.remove('vc-mode-active');
       stopObserver();
 
       btn.textContent = 'Vertical \u2195';
@@ -395,7 +612,7 @@
     panel.innerHTML = `
       <label>
         Card width
-        <input type="range" id="metatft-vc-width" min="150" max="400" value="${CARD_MIN_WIDTH}" step="10">
+        <input type="range" id="metatft-vc-width" min="60" max="300" value="${CARD_MIN_WIDTH}" step="10">
         <span id="metatft-vc-width-val">${CARD_MIN_WIDTH}px</span>
       </label>
     `;
